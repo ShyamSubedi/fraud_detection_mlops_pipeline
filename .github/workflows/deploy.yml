@@ -1,1 +1,53 @@
+name: Deploy to EKS
+
+on:
+  push:
+    branches:
+      - main  # Trigger only on push to main branch
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-2
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push fraud-api image
+      run: |
+        docker build -t fraud-api ./fraud-api
+        docker tag fraud-api:latest 795327773457.dkr.ecr.us-east-2.amazonaws.com/fraud-api:latest
+        docker push 795327773457.dkr.ecr.us-east-2.amazonaws.com/fraud-api:latest
+
+    - name: Build, tag, and push streamlit-app image
+      run: |
+        docker build -t streamlit-app ./streamlit-app
+        docker tag streamlit-app:latest 795327773457.dkr.ecr.us-east-2.amazonaws.com/streamlit-app:latest
+        docker push 795327773457.dkr.ecr.us-east-2.amazonaws.com/streamlit-app:latest
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region us-east-2 --name fraud-ml-cluster
+
+    - name: Apply Kubernetes manifests
+      run: |
+        kubectl apply -f k8s/fraud-api-deployment.yaml
+        kubectl apply -f k8s/streamlit-deployment.yaml
 
