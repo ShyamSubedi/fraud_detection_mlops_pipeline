@@ -77,3 +77,5 @@ def predict(transaction: Transaction):
         error_msg = traceback.format_exc()
         print("❌ Error during prediction or logging:\n", error_msg, file=sys.stderr)
         return {"error": "Prediction failed. Check server logs."}
+
+# Trigger GitHub Actions – test commit
